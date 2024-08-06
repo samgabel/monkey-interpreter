@@ -35,13 +35,27 @@ func (l *Lexer) NextToken() token.Token {
 
 	switch l.ch {
 	case '=':
-		tok = newToken(token.ASSIGN, l.ch)
+		// EQ Operator '=='
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = token.Token{Type: token.EQ, Literal: string(ch) + string(l.ch)}
+		} else {
+			tok = newToken(token.ASSIGN, l.ch)
+		}
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
 	case '-':
 		tok = newToken(token.MINUS, l.ch)
 	case '!':
-		tok = newToken(token.BANG, l.ch)
+		// NOT_EQ Operator '!='
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = token.Token{Type: token.NOT_EQ, Literal: string(ch) + string(l.ch)}
+		} else {
+			tok = newToken(token.BANG, l.ch)
+		}
 	case '*':
 		tok = newToken(token.ASTERISK, l.ch)
 	case '/':
@@ -111,6 +125,16 @@ func (l *Lexer) readChar() {
 	// set our new current position to be the previous readPosition and increment the new readPosition by 1.
 	l.position = l.readPosition
 	l.readPosition += 1
+}
+
+// This method's purpose is to give us a "peek" at the char at the (Lexer).readPosition without incrementing the
+// Lexer struct's positional pointers.
+func (l *Lexer) peekChar() byte {
+	// check if we have reached the end of the input
+	if l.readPosition >= len(l.input) {
+		return 0
+	}
+	return l.input[l.readPosition]
 }
 
 // Will return a string of the input of an identifier or keyword (anything with contiguous letters), and will
