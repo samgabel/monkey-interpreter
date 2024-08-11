@@ -63,3 +63,15 @@ type Identifier struct {
 // for implementation puposes only
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
+
+// Implements the Statement interface (which implements the Node interface), this is a struct that
+// contains the token.RETURN token, and the associated expression.
+type ReturnStatement struct {
+	Token       token.Token // the token.RETURN token
+	ReturnValue Expression
+}
+
+// for implementation purposes only
+func (rs *ReturnStatement) statementNode()       {}
+func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
+
