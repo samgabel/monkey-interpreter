@@ -12,12 +12,10 @@ import (
 //
 // curToken and peekToken act exactly like the two "pointers" our lexer has (position nad readPosition).
 // Intstead of pointing to a character in the input they point to the current and the next token.
-//
 // We need the curToken in order to decide what to do next and the peekToken for this decision if curToken
 // doesn't give us enough information.
 type Parser struct {
-	lexer *lexer.Lexer
-
+	lexer  *lexer.Lexer
 	errors []string
 
 	curToken  token.Token
@@ -29,7 +27,7 @@ type Parser struct {
 // By calling (*Parser).nextToken() we will initialize our curToken and peekToken.
 func NewParser(l *lexer.Lexer) *Parser {
 	p := &Parser{
-		lexer: l,
+		lexer:  l,
 		errors: []string{},
 	}
 
@@ -40,8 +38,37 @@ func NewParser(l *lexer.Lexer) *Parser {
 	return p
 }
 
+// This Parser method will set the curToken to the previous peekToken and then call the (*Lexer).nextToken()
+// method in order to "read" forward in the lexer token queue.
+func (p *Parser) nextToken() {
+	p.curToken = p.peekToken
+	p.peekToken = p.lexer.NextToken()
+}
+
+// Boolean value to match our curToken to our input token Type.
+func (p *Parser) curTokenIs(t token.TokenType) bool {
+	return p.curToken.Type == t
+}
+
+// Boolean value to match our peekToken to our input token Type.
+func (p *Parser) peekTokenIs(t token.TokenType) bool {
+	return p.peekToken.Type == t
+}
+
+// Will advance our Parser tokens if our peekToken matches our input token Type.
+//
+// This is considered an "assertion function" and nearly all parsers share this.
+func (p *Parser) expectPeek(t token.TokenType) bool {
+	if p.peekTokenIs(t) {
+		p.nextToken()
+		return true
+	}
+	p.peekError(t)
+	return false
+}
+
 // This Parser method will return a slice of all the accumulated errors so far.
-func (p *Parser) Errors() []string{
+func (p *Parser) Errors() []string {
 	return p.errors
 }
 
@@ -50,13 +77,6 @@ func (p *Parser) Errors() []string{
 func (p *Parser) peekError(t token.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead", t, p.peekToken.Type)
 	p.errors = append(p.errors, msg)
-}
-
-// This Parser method will set the curToken to the previous peekToken and then call the (*Lexer).nextToken()
-// method in order to "read" forward in the lexer token queue.
-func (p *Parser) nextToken() {
-	p.curToken = p.peekToken
-	p.peekToken = p.lexer.NextToken()
 }
 
 // This will be the entry point of the Recursive-Descent Parser.
@@ -138,24 +158,3 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
-// Boolean value to match our curToken to our input token Type.
-func (p *Parser) curTokenIs(t token.TokenType) bool {
-	return p.curToken.Type == t
-}
-
-// Boolean value to match our peekToken to our input token Type.
-func (p *Parser) peekTokenIs(t token.TokenType) bool {
-	return p.peekToken.Type == t
-}
-
-// Will advance our Parser tokens if our peekToken matches our input token Type.
-//
-// This is considered an "assertion function" and nearly all parsers share this.
-func (p *Parser) expectPeek(t token.TokenType) bool {
-	if p.peekTokenIs(t) {
-		p.nextToken()
-		return true
-	}
-	p.peekError(t)
-	return false
-}
