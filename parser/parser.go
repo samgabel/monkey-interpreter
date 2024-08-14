@@ -8,6 +8,18 @@ import (
 	"github.com/samgabel/monkey-interpreter/token"
 )
 
+// Constants are ordered by precedence (higher int = higher precedence)
+const (
+	_ int = iota
+	LOWEST
+	EQUALS      // ==
+	LESSGREATER // > or <
+	SUM         // +
+	PRODUCT     // *
+	PREFIX      // -X or !X
+	CALL        // myFunction(X)
+)
+
 type (
 	// Function signature that gets called when we encounter the associated token type in prefix position.
 	prefixParseFn func() ast.Expression
@@ -45,6 +57,9 @@ func NewParser(l *lexer.Lexer) *Parser {
 		lexer:  l,
 		errors: []string{},
 	}
+
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
 
 	// read two tokens, so curToken and peekToken are both set
 	p.nextToken()
@@ -121,7 +136,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
@@ -171,6 +186,40 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	}
 
 	return stmt
+}
+
+// This method handles statement processing specifically for standalone Expressions (aka Expression Statements)
+// "<expression>"
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.curToken}
+
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	// check and handle OPTIONAL semicolon (makes it easy to type in things like "5 + 5" directly into the REPL)
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+// TODO: Flesh out
+// our first rendition will only check whether we have a parsing function associated with p.curToken.Type in the
+// prefix postition; this is enough to pass TestIdentifierExpression().
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		return nil
+	}
+	leftExp := prefix()
+
+	return leftExp
+}
+
+// This prefix parse function handles parsing of Identifiers. It happens to be that this is very simple,
+// we only need to return a pointer to the curToken wrapped as an ast.Identifier.
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
 
 // A helper function that adds entries to the (*Parser).prefixParseFns map
