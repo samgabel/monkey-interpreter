@@ -8,18 +8,33 @@ import (
 	"github.com/samgabel/monkey-interpreter/token"
 )
 
+type (
+	// Function signature that gets called when we encounter the associated token type in prefix position.
+	prefixParseFn func() ast.Expression
+	// Function signature that gets called when we encounter the associated token type in infix position.
+	//
+	// We take an additional ast.Expression as input because we have to deal with the "left side" of the
+	// definition as well.
+	infixParseFn func(ast.Expression) ast.Expression
+)
+
 // We will repeatedly call (*Lexer).NextToken() in order to get tokens from the input.
 //
 // curToken and peekToken act exactly like the two "pointers" our lexer has (position nad readPosition).
 // Intstead of pointing to a character in the input they point to the current and the next token.
 // We need the curToken in order to decide what to do next and the peekToken for this decision if curToken
 // doesn't give us enough information.
+//
+// prefix/infixParseFns maps serve to check if our curToken.Type has an associated prefix/infix parsing function.
 type Parser struct {
 	lexer  *lexer.Lexer
 	errors []string
 
 	curToken  token.Token
 	peekToken token.Token
+
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns  map[token.TokenType]infixParseFn
 }
 
 // This function servers to construct a new instance of a Parser.
@@ -158,3 +173,12 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
+// A helper function that adds entries to the (*Parser).prefixParseFns map
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFn) {
+	p.prefixParseFns[tokenType] = fn
+}
+
+// A helper function that adds entries to the (*Parser).infixParseFns map
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
+	p.infixParseFns[tokenType] = fn
+}
