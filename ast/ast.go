@@ -1,13 +1,18 @@
 package ast
 
-import "github.com/samgabel/monkey-interpreter/token"
+import (
+	"strings"
+
+	"github.com/samgabel/monkey-interpreter/token"
+)
 
 // Every node in our AST has to implement the Node interface, meaning that they have to provide
 // a TokenLiteral() method that returns the literal value of the token.
 //
-// TokenLiteral() will only be used for debugging and testing.
+// TokenLiteral() and String() will only be used for debugging and testing.
 type Node interface {
 	TokenLiteral() string
+	String() string
 }
 
 // Statements do NOT produce values, like (let x = 5)
@@ -41,6 +46,18 @@ func (p *Program) TokenLiteral() string {
 	return ""
 }
 
+// Returns the value of each statement's String() method and aggregates them into a buffer
+// that is then returned. Great for testing and debugging the contents of the Program.
+func (p *Program) String() string {
+	var out strings.Builder
+
+	for _, s := range p.Statements {
+		out.WriteString(s.String())
+	}
+
+	return out.String()
+}
+
 // Implements the Statement interface (which implements the Node interface), this is a struct that
 // contains the token.LET token, the associated identifier and it's expression.
 type LetStatement struct {
@@ -53,6 +70,23 @@ type LetStatement struct {
 func (ls *LetStatement) statementNode()       {}
 func (ls *LetStatement) TokenLiteral() string { return ls.Token.Literal }
 
+// This simply will construct a string of the entire statement: "let <identifier> = <expression>;"
+func (ls *LetStatement) String() string {
+	var out strings.Builder
+
+	out.WriteString(ls.TokenLiteral() + " ")
+	out.WriteString(ls.Name.String())
+	out.WriteString(" = ")
+
+	if ls.Value != nil {
+		out.WriteString(ls.Value.String())
+	}
+
+	out.WriteString(";")
+
+	return out.String()
+}
+
 // Implements the Expression interface (which implements the Node interface), this is a struct that
 // containes the token.IDENT token, and its associated value string.
 type Identifier struct {
@@ -63,6 +97,7 @@ type Identifier struct {
 // for implementation puposes only
 func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
+func (i *Identifier) String() string       { return i.Value }
 
 // Implements the Statement interface (which implements the Node interface), this is a struct that
 // contains the token.RETURN token, and the associated expression.
@@ -75,3 +110,36 @@ type ReturnStatement struct {
 func (rs *ReturnStatement) statementNode()       {}
 func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
 
+// This simply will construct a string of the entire statement: "return <expression>;"
+func (rs *ReturnStatement) String() string {
+	var out strings.Builder
+
+	out.WriteString(rs.TokenLiteral() + " ")
+
+	if rs.ReturnValue != nil {
+		out.WriteString(rs.ReturnValue.String())
+	}
+
+	out.WriteString(";")
+
+	return out.String()
+}
+
+// Implements the Statement interface (which implements the Node interface). We have "expression statements" in
+// this language because we wan't to allow the use of standalone Expressions (or Unused Expressions).
+type ExpressionStatement struct {
+	Token      token.Token // the first token of the expression
+	Expression Expression
+}
+
+// for implementation purposes only
+func (es *ExpressionStatement) statementNode()       {}
+func (es *ExpressionStatement) TokenLiteral() string { return es.Token.Literal }
+
+// This simply will construct a string of the entire statement: "<expression>"
+func (es *ExpressionStatement) String() string {
+	if es.Expression != nil {
+		return es.Expression.String()
+	}
+	return ""
+}
