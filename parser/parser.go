@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/samgabel/monkey-interpreter/ast"
 	"github.com/samgabel/monkey-interpreter/lexer"
@@ -60,6 +61,7 @@ func NewParser(l *lexer.Lexer) *Parser {
 
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
+	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 
 	// read two tokens, so curToken and peekToken are both set
 	p.nextToken()
@@ -220,6 +222,26 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 // we only need to return a pointer to the curToken wrapped as an ast.Identifier.
 func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+// This prefix parse function handles parsing of Integer Literals. It will construct a new ast.IntegerLiteral
+// and attempt to convert the string in p.curToken.Literal into an int64, inserting it into the ast.IntegerLiteral
+// and returning a pointer to it.
+//
+// This function will append errors to the p.errors slice if strconv.ParseInt() fails.
+func (p *Parser) parseIntegerLiteral() ast.Expression {
+	lit := &ast.IntegerLiteral{Token: p.curToken}
+
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	lit.Value = value
+
+	return lit
 }
 
 // A helper function that adds entries to the (*Parser).prefixParseFns map

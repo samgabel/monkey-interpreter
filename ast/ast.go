@@ -143,3 +143,15 @@ func (es *ExpressionStatement) String() string {
 	}
 	return ""
 }
+
+// Implements the Expression interface (which implements the Node interface). We have "integer literals" in
+// this language because we wan't to allow the use of standalone integers as Expressions.
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+// for implementation purposes only
+func (il *IntegerLiteral) expressionNode()      {}
+func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
+func (il *IntegerLiteral) String() string       { return il.Token.Literal }
