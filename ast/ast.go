@@ -155,3 +155,25 @@ type IntegerLiteral struct {
 func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
 func (il *IntegerLiteral) String() string       { return il.Token.Literal }
+
+// Implements the Expression interface (which implements the Node interface). We have Expressions that have
+// an addon prefix operator that serves to modify the evaluated Expression.
+type PrefixExpression struct {
+	Token    token.Token // the prefix token, e.g. !
+	Operator string
+	Right    Expression
+}
+
+// for implementation puposes only
+func (pe *PrefixExpression) expressionNode()      {}
+func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *PrefixExpression) String() string {
+	var out strings.Builder
+
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}

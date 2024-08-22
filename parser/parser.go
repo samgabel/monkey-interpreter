@@ -62,6 +62,8 @@ func NewParser(l *lexer.Lexer) *Parser {
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
+	p.registerPrefix(token.BANG, p.parsePrefixExpression)
+	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 
 	// read two tokens, so curToken and peekToken are both set
 	p.nextToken()
@@ -108,6 +110,13 @@ func (p *Parser) Errors() []string {
 // doesn't match the expectation.
 func (p *Parser) peekError(t token.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead", t, p.peekToken.Type)
+	p.errors = append(p.errors, msg)
+}
+
+// A helper method that just adds a formatted error message to the errors field of the Parser. Specifically,
+// this appends an error that states there is no prefix parsing function found for the given token.TokenType.
+func (p *Parser) noPrefixParseFnError(t token.TokenType) {
+	msg := fmt.Sprintf("no prefix parse function for %s found", t)
 	p.errors = append(p.errors, msg)
 }
 
@@ -206,11 +215,12 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 }
 
 // TODO: Flesh out
-// our first rendition will only check whether we have a parsing function associated with p.curToken.Type in the
-// prefix postition; this is enough to pass TestIdentifierExpression().
+// adding (*Parser).noPrefixParseFnError() just serves to add a formatted error message to our parser's errors field.
+// still need to incorporate precedence.
 func (p *Parser) parseExpression(precedence int) ast.Expression {
 	prefix := p.prefixParseFns[p.curToken.Type]
 	if prefix == nil {
+		p.noPrefixParseFnError(p.curToken.Type)
 		return nil
 	}
 	leftExp := prefix()
@@ -242,6 +252,23 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	lit.Value = value
 
 	return lit
+}
+
+// This method will build out a new ast.PrefixExpression and will actually advance our token in order to be able
+// to populate the 'Right' field or operand of the ast.PrefixExpression.
+//
+// This method is only called when an operator prefix of (! or -) is identified.
+func (p *Parser) parsePrefixExpression() ast.Expression {
+	expression := &ast.PrefixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+	}
+
+	p.nextToken()
+
+	expression.Right = p.parseExpression(PREFIX)
+
+	return expression
 }
 
 // A helper function that adds entries to the (*Parser).prefixParseFns map
